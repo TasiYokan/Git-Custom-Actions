@@ -33,9 +33,15 @@ IF %ERRORLEVEL% EQU 0 (
     ) ELSE (
         ECHO [Rebaes local_backup success! Merge local to local_backup and delete local, finally create a new one later.]
         git rebase local_backup
-        git checkout local_backup
-        git merge local
-        git branch -d local
+        IF %ERRORLEVEL% EQU 0 (
+            git checkout local_backup
+            git merge local
+            git branch -d local
+        ) ELSE (
+            git checkout local_backup
+            git cherry-pick local@{0}
+            git branch -D local
+        )
     )
     git checkout master
     git branch local
