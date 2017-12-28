@@ -31,22 +31,20 @@ IF %ERRORLEVEL% EQU 0 (
         ECHO [local_backup doesn't exist! Simply rename local branch to local_backup and create a new one later.]
         git branch -m local local_backup
     ) ELSE (
-        ECHO [Rebaes local_backup success! Merge local to local_backup and delete local, finally create a new one later.]
-        git rebase local_backup
-        IF %ERRORLEVEL% EQU 0 (
-            git checkout local_backup
-            git merge local
-            git branch -d local
-        ) ELSE (
-            git checkout local_backup
-            git cherry-pick local@{0}
-            git branch -D local
+        REM Rebase commits from master HEAD to local HEAD onto local_backup
+        git rebase --onto local_backup master local
+        IF %ERRORLEVEL% NEQ 0 (
+            SET /A command_result=%ERRORLEVEL%
         )
+        git checkout local_backup
+        git merge local
+        git branch -d local
     )
     git checkout master
     git branch local
     git checkout local
 ) ELSE (
+    SET /A command_result=%ERRORLEVEL%
     ECHO [Couldn't rebase due to changes on remote.]
     REM To let the merge happen on local
     git rebase --abort
@@ -56,4 +54,5 @@ IF %ERRORLEVEL% EQU 0 (
     git merge master --no-ff
 )
 
+EXIT /B %command_result%
 REM Done
