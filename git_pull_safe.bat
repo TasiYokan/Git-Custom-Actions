@@ -6,5 +6,9 @@ git checkout master
 git pull origin master
 git checkout local
 git rebase master
+IF %ERRORLEVEL% NEQ 0 (
+    SET /A command_result=%ERRORLEVEL%
+)
 
+EXIT /B %command_result%
 REM Done

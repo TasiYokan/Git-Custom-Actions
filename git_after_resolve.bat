@@ -6,10 +6,12 @@ git checkout master
 git fetch origin master
 git cherry-pick %~f1
 IF %ERRORLEVEL% NEQ 0 (
+    SET /A command_result=%ERRORLEVEL%
     ECHO [Force to get merged version on local to update master.]
     git merge --strategy-option theirs local
 )
 git checkout local
 git rebase master
 
+EXIT /B %command_result%
 REM Done
