@@ -31,11 +31,12 @@ IF %ERRORLEVEL% EQU 0 (
         ECHO [local_backup doesn't exist! Simply rename local branch to local_backup and create a new one later.]
         git branch -m local local_backup
     ) ELSE (
-        REM Rebase commits from master HEAD to local HEAD onto local_backup
-        git rebase --onto local_backup master local
+        REM Rebase commits from master HEAD~1 to local HEAD onto local_backup
+        git rebase --onto local_backup master@{1} local
         IF %ERRORLEVEL% NEQ 0 (
             SET /A command_result=%ERRORLEVEL%
         )
+        ECHO [Merge local to local_backup with fast-forward]
         git checkout local_backup
         git merge local
         git branch -d local
