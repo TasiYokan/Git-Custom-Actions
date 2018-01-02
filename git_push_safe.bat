@@ -9,6 +9,15 @@ SET /A local_backup_exists=%ERRORLEVEL%
 REM Optional
 git checkout local
 git fetch origin master
+
+SET result_output=git_output.txt
+git rev-list --count master..origin/master>%result_output%
+SET /P behind_count=<%result_output%
+DEL %result_output%
+ECHO %behind_count%
+SET /A root_commit=%behind_count%+1
+ECHO %root_commit%
+
 git rebase master
 
 IF %ERRORLEVEL% EQU 0 (
@@ -32,7 +41,9 @@ IF %ERRORLEVEL% EQU 0 (
         git branch -m local local_backup
     ) ELSE (
         REM Rebase commits from master HEAD~1 to local HEAD onto local_backup
-        git rebase --onto local_backup master@{1} local
+        git rebase master
+        
+        git rebase --onto local_backup master@{%root_commit%} local
         IF %ERRORLEVEL% NEQ 0 (
             SET /A command_result=%ERRORLEVEL%
         )
