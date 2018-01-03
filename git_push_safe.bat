@@ -1,9 +1,10 @@
 @ECHO off
+SETLOCAL enabledelayedexpansion
 
 REM Merge local to changes on master branch (if any) before push
 
 REM I don't know why return value will change to 0 if I put it at line 29...
-git rev-parse --verify --quite local_backup
+git rev-parse --verify --quiet local_backup
 SET /A local_backup_exists=%ERRORLEVEL%
 
 REM Optional
@@ -24,8 +25,16 @@ IF %ERRORLEVEL% EQU 0 (
     ECHO [Merge local changes to master to push.]
     git checkout master
     git pull origin master
+    IF !ERRORLEVEL! NEQ 0 (
+        ECHO [You need merge changes on remote first]
+        GOTO ERROREXIT
+    )
     REM Squash all local changes to one when submit to master
     git merge --squash local
+    IF !ERRORLEVEL! NEQ 0 (
+        ECHO [You need merge changes between remote and local first]
+        GOTO ERROREXIT
+    )
     REM Reuse the commit message from local branch's HEAD
     git commit --reuse-message=local@{0}
     
@@ -40,9 +49,10 @@ IF %ERRORLEVEL% EQU 0 (
         ECHO [local_backup doesn't exist! Simply rename local branch to local_backup and create a new one later.]
         git branch -m local local_backup
     ) ELSE (
+        REM Get all local changes and rebase onto commit before squash merge on master
+        git rebase --onto master@{1} master@{%root_commit%} local
+
         REM Rebase commits from master HEAD~1 to local HEAD onto local_backup
-        git rebase master
-        
         git rebase --onto local_backup master@{%root_commit%} local
         IF %ERRORLEVEL% NEQ 0 (
             SET /A command_result=%ERRORLEVEL%
@@ -68,3 +78,6 @@ IF %ERRORLEVEL% EQU 0 (
 
 EXIT /B %command_result%
 REM Done
+
+:ERROREXIT:
+EXIT /B 1
