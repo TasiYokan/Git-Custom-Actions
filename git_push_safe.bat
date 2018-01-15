@@ -3,14 +3,11 @@ SETLOCAL enabledelayedexpansion
 
 REM Merge local to changes on master branch (if any) before push
 
-REM I don't know why return value will change to 0 if I put it at line 29...
-git rev-parse --verify --quiet local_backup
-SET /A local_backup_exists=%ERRORLEVEL%
-
 REM Optional
 git checkout local
 git fetch origin master
 
+REM Check if remote updated while we have local changes. If yes, we will record it to find the right commit to rebase
 SET result_output=git_output.txt
 git rev-list --count master..origin/master>%result_output%
 SET /P behind_count=<%result_output%
@@ -27,12 +24,14 @@ IF %ERRORLEVEL% EQU 0 (
     git pull origin master
     IF !ERRORLEVEL! NEQ 0 (
         ECHO [You need merge changes on remote first]
+        SET /A command_result=!ERRORLEVEL!
         GOTO ERROREXIT
     )
     REM Squash all local changes to one when submit to master
     git merge --squash local
     IF !ERRORLEVEL! NEQ 0 (
         ECHO [You need merge changes between remote and local first]
+        SET /A command_result=!ERRORLEVEL!
         GOTO ERROREXIT
     )
     REM Reuse the commit message from local branch's HEAD
@@ -44,8 +43,8 @@ IF %ERRORLEVEL% EQU 0 (
     REM TODO: This will clean all local git history...
     REM git reset master@{0}
 
-    ECHO %local_backup_exists%
-    IF %local_backup_exists% EQU 128 (
+    git rev-parse --verify --quiet local_backup
+    IF !ERRORLEVEL! EQU 128 (
         ECHO [local_backup doesn't exist! Simply rename local branch to local_backup and create a new one later.]
         git branch -m local local_backup
     ) ELSE (
@@ -54,8 +53,8 @@ IF %ERRORLEVEL% EQU 0 (
 
         REM Rebase commits from master HEAD~1 to local HEAD onto local_backup
         git rebase --onto local_backup master@{%root_commit%} local
-        IF %ERRORLEVEL% NEQ 0 (
-            SET /A command_result=%ERRORLEVEL%
+        IF !ERRORLEVEL! NEQ 0 (
+            SET /A command_result=!ERRORLEVEL!
         )
         ECHO [Merge local to local_backup with fast-forward]
         git checkout local_backup
@@ -66,7 +65,7 @@ IF %ERRORLEVEL% EQU 0 (
     git branch local
     git checkout local
 ) ELSE (
-    SET /A command_result=%ERRORLEVEL%
+    SET /A command_result=!ERRORLEVEL!
     ECHO [Couldn't rebase due to changes on remote.]
     REM To let the merge happen on local
     git rebase --abort
